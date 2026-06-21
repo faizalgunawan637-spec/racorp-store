@@ -56,6 +56,50 @@
       pointer-events: none;
     }
 
+    .music-toggle {
+      position: fixed;
+      right: clamp(16px, 3vw, 30px);
+      bottom: clamp(16px, 3vw, 30px);
+      z-index: 20;
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 71, 97, .78);
+      border-radius: 50%;
+      color: #fff;
+      background: rgba(25, 5, 10, .9);
+      box-shadow: 0 0 24px rgba(255, 24, 56, .5), inset 0 0 16px rgba(255, 24, 56, .18);
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: transform .2s ease, background .2s ease;
+    }
+
+    .music-toggle:hover,
+    .music-toggle:focus-visible {
+      outline: none;
+      transform: scale(1.08);
+      background: rgba(115, 0, 22, .94);
+    }
+
+    .music-toggle svg { width: 23px; height: 23px; fill: currentColor; }
+    .music-toggle .pause-icon { display: none; }
+    .music-toggle.playing .play-icon { display: none; }
+    .music-toggle.playing .pause-icon { display: block; }
+
+    .music-toggle.playing::before,
+    .music-toggle.playing::after {
+      content: "";
+      position: absolute;
+      inset: -7px;
+      border: 1px solid rgba(255, 24, 56, .55);
+      border-radius: 50%;
+      animation: soundPulse 1.8s ease-out infinite;
+      pointer-events: none;
+    }
+
+    .music-toggle.playing::after { animation-delay: .9s; }
+
     .shell {
       width: min(100%, 720px);
       position: relative;
@@ -289,6 +333,11 @@
       50% { box-shadow: 0 0 0 7px rgba(7, 4, 6, .9), 0 0 42px rgba(255, 24, 56, .98); }
     }
 
+    @keyframes soundPulse {
+      0% { opacity: .9; transform: scale(.82); }
+      100% { opacity: 0; transform: scale(1.38); }
+    }
+
     @media (max-width: 480px) {
       body { padding: 12px; align-items: start; }
       .shell { border-radius: 18px; }
@@ -306,6 +355,11 @@
 </head>
 <body>
   <canvas id="matrix" aria-hidden="true"></canvas>
+  <audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
+  <button class="music-toggle" id="musicToggle" type="button" aria-label="Putar musik" title="Putar atau jeda musik">
+    <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7L8 5Z"/></svg>
+    <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6V5Zm8 0h4v14h-4V5Z"/></svg>
+  </button>
 
   <main class="shell">
     <header class="cover">
@@ -367,6 +421,37 @@
 
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
+
+    const music = document.getElementById("bgMusic");
+    const musicToggle = document.getElementById("musicToggle");
+    music.volume = .55;
+
+    function syncMusicButton() {
+      const playing = !music.paused;
+      musicToggle.classList.toggle("playing", playing);
+      musicToggle.setAttribute("aria-label", playing ? "Jeda musik" : "Putar musik");
+    }
+
+    async function startMusic() {
+      try {
+        await music.play();
+        syncMusicButton();
+      } catch (_) {
+        // Browser tertentu baru mengizinkan suara setelah sentuhan pertama.
+      }
+    }
+
+    musicToggle.addEventListener("click", async () => {
+      if (music.paused) await startMusic();
+      else music.pause();
+      syncMusicButton();
+    });
+
+    music.addEventListener("play", syncMusicButton);
+    music.addEventListener("pause", syncMusicButton);
+    window.addEventListener("pointerdown", startMusic, { once: true });
+    window.addEventListener("keydown", startMusic, { once: true });
+    startMusic();
 
     const canvas = document.getElementById("matrix");
     const ctx = canvas.getContext("2d");
